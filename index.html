@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>STUDY FOR NA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              'brand-bg': 'var(--color-brand-bg)',
+              'brand-surface': 'var(--color-brand-surface)',
+              'brand-text-primary': 'var(--color-brand-text-primary)',
+              'brand-text-secondary': 'var(--color-brand-text-secondary)',
+              'brand-primary': 'var(--color-brand-primary)',
+              'brand-accent': 'var(--color-brand-accent)',
+            },
+          },
+        },
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.2.0",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.19.0"
+  }
+}
+</script>
+<!-- Add Babel to transpile JSX and TSX in the browser -->
+<script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+<style>
+    :root {
+        --color-brand-bg: #f8fafc;
+        --color-brand-surface: #ffffff;
+        --color-brand-text-primary: #1e293b;
+        --color-brand-text-secondary: #64748b;
+        --color-brand-primary: #374151;
+        --color-brand-accent: #94a3b8;
+    }
+    html.dark {
+        --color-brand-bg: #020617; /* More black: slate-950 */
+        --color-brand-surface: #0f172a; /* Darker surface: slate-900 */
+        --color-brand-text-primary: #f8fafc; /* Brighter text: slate-50 */
+        --color-brand-text-secondary: #64748b; /* Adjusted secondary text: slate-500 */
+        --color-brand-primary: #e2e8f0; /* Kept for highlights: slate-200 */
+        --color-brand-accent: #334155; /* Darker accent/border: slate-700 */
+    }
+    @keyframes scale-in {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    @keyframes scale-out {
+      from { transform: scale(1); opacity: 1; }
+      to { transform: scale(0.95); opacity: 0; }
+    }
+    .schedule-block-enter {
+      animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    .schedule-block-exit {
+      animation: scale-out 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+</style>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-brand-bg font-sans">
+    <div id="root"></div>
+    <!-- Load the main app script with babel for transpilation -->
+    <script type="text/babel" data-type="module" data-presets="react,typescript" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
