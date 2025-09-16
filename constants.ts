@@ -2,9 +2,9 @@ import type { Subject } from './types.ts';
 
 export const HOURS: string[] = Array.from({ length: 17 }, (_, i) => {
   const hour = i + 8;
-  const ampm = hour >= 12 && hour < 24 ? 'PM' : 'AM';
+  const ampm = hour >= 12 && hour < 24 ? '오후' : '오전';
   const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-  return `${displayHour.toString().padStart(2, '0')}:00 ${ampm}`;
+  return `${ampm} ${displayHour.toString().padStart(2, '0')}:00`;
 });
 
 export const DEFAULT_SUBJECTS: Subject[] = [

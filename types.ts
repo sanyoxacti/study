@@ -1,4 +1,9 @@
 
+export interface MemoItem {
+  id: string;
+  text: string;
+  completed: boolean;
+}
 
 export interface Subject {
   id: string;
@@ -10,7 +15,7 @@ export interface Subject {
 export interface ScheduleEntry {
   id:string; // Format: 'YYYY-MM-DD-HH'
   subjectId: string;
-  memo: string;
+  memo?: MemoItem[];
   isNew?: boolean;
   isExiting?: boolean;
 }
@@ -42,6 +47,7 @@ export interface AppData {
   goals: Goal[];
   dailyGoal: number; // in hours
   reviews: ReviewLog;
+  todos: { [date: string]: MemoItem[] };
 }
 
 export enum View {

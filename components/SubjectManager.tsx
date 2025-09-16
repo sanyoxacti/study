@@ -122,51 +122,59 @@ export const SubjectManager: React.FC<SubjectManagerProps> = ({ subjects, setSub
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-brand-surface rounded-lg shadow-2xl p-6 w-full max-w-md text-brand-text-primary">
-        <h2 className="text-2xl font-bold mb-6 text-center">과목 관리</h2>
-        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-          {subjects.map((subject) => (
-            <div key={subject.id} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-2 rounded-md">
-              <div className={`w-8 h-8 rounded-full ${subject.color}`}></div>
-              <input 
-                type="text" 
-                value={subject.name}
-                onChange={(e) => handleUpdateSubjectName(subject.id, e.target.value)}
-                className="flex-grow bg-transparent border-b-2 border-slate-300 dark:border-slate-600 focus:border-brand-primary focus:outline-none p-1"
-              />
-              <button onClick={() => handleDeleteSubject(subject.id)} className="text-slate-400 hover:text-red-500 transition-colors">
-                <TrashIcon className="w-6 h-6" />
-              </button>
-            </div>
-          ))}
+      <div className="bg-brand-surface rounded-lg shadow-2xl w-full max-w-md text-brand-text-primary flex flex-col max-h-[90vh]">
+        {/* Header */}
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex-shrink-0">
+            <h2 className="text-2xl font-bold text-center">과목 관리</h2>
         </div>
         
-        <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
-            <h3 className="text-lg font-semibold mb-3">새 과목 추가</h3>
-            <div className="flex flex-col sm:flex-row gap-3">
-                <input
-                    type="text"
-                    value={newSubjectName}
-                    onChange={(e) => setNewSubjectName(e.target.value)}
-                    placeholder="과목 이름"
-                    className="flex-grow bg-slate-100 dark:bg-slate-700 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                />
-                <button onClick={handleAddSubject} className="bg-brand-primary hover:bg-slate-700 dark:bg-slate-300 dark:hover:bg-slate-400 text-white dark:text-slate-900 font-bold p-2 rounded-md flex items-center justify-center gap-2 transition-colors">
-                    <PlusIcon className="w-5 h-5" />
-                    추가
-                </button>
+        {/* Main scrollable content */}
+        <div className="overflow-y-auto p-6">
+            <div className="space-y-4">
+              {subjects.map((subject) => (
+                <div key={subject.id} className="flex items-center gap-3 bg-slate-50 dark:bg-slate-800 p-2 rounded-md">
+                  <div className={`w-8 h-8 rounded-full ${subject.color}`}></div>
+                  <input 
+                    type="text" 
+                    value={subject.name}
+                    onChange={(e) => handleUpdateSubjectName(subject.id, e.target.value)}
+                    className="flex-grow bg-transparent border-b-2 border-slate-300 dark:border-slate-600 focus:border-brand-primary focus:outline-none p-1"
+                  />
+                  <button onClick={() => handleDeleteSubject(subject.id)} className="text-slate-400 hover:text-red-500 transition-colors">
+                    <TrashIcon className="w-6 h-6" />
+                  </button>
+                </div>
+              ))}
             </div>
-            <div className="mt-4">
-                <p className="mb-2 text-sm text-slate-500">색상:</p>
-                <div className={`flex flex-wrap gap-2 ${isSuggestingColor ? 'animate-pulse' : ''}`}>
-                    {AVAILABLE_COLORS.map(c => (
-                        <button key={c.color} onClick={() => setSelectedColor(c)} className={`w-8 h-8 rounded-full ${c.color} transition-transform transform hover:scale-110 ${selectedColor.color === c.color ? 'ring-2 ring-offset-2 ring-offset-brand-surface ring-brand-primary' : ''}`}></button>
-                    ))}
+            
+            <div className="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
+                <h3 className="text-lg font-semibold mb-3">새 과목 추가</h3>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <input
+                        type="text"
+                        value={newSubjectName}
+                        onChange={(e) => setNewSubjectName(e.target.value)}
+                        placeholder="과목 이름"
+                        className="flex-grow bg-slate-100 dark:bg-slate-700 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    />
+                    <button onClick={handleAddSubject} className="bg-brand-primary hover:bg-slate-700 dark:bg-slate-300 dark:hover:bg-slate-400 text-white dark:text-slate-900 font-bold p-2 rounded-md flex items-center justify-center gap-2 transition-colors">
+                        <PlusIcon className="w-5 h-5" />
+                        추가
+                    </button>
+                </div>
+                <div className="mt-4">
+                    <p className="mb-2 text-sm text-slate-500">색상:</p>
+                    <div className={`flex flex-wrap gap-2 ${isSuggestingColor ? 'animate-pulse' : ''}`}>
+                        {AVAILABLE_COLORS.map(c => (
+                            <button key={c.color} onClick={() => setSelectedColor(c)} className={`w-8 h-8 rounded-full ${c.color} transition-transform transform hover:scale-110 ${selectedColor.color === c.color ? 'ring-2 ring-offset-2 ring-offset-brand-surface ring-brand-primary' : ''}`}></button>
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div className="mt-8 text-center">
+        {/* Footer */}
+        <div className="p-6 border-t border-slate-200 dark:border-slate-700 text-center flex-shrink-0">
             <button onClick={onClose} className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-brand-text-primary font-bold py-2 px-6 rounded-lg transition-colors">
             완료
             </button>

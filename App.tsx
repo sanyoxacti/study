@@ -1,7 +1,8 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage.ts';
-import type { AppData, ScheduleEntry, Subject, DistractionLog, Goal, ReviewLog } from './types.ts';
+import type { AppData, ScheduleEntry, Subject, DistractionLog, Goal, ReviewLog, MemoItem } from './types.ts';
 import { View } from './types.ts';
 import { Scheduler } from './components/Scheduler.tsx';
 import { Statistics } from './components/Statistics.tsx';
@@ -17,6 +18,7 @@ const App: React.FC = () => {
     goals: [],
     dailyGoal: 1,
     reviews: {},
+    todos: {},
   });
   
   const [view, setView] = useState<View>(View.Scheduler);
@@ -56,6 +58,11 @@ const App: React.FC = () => {
   const setReviews = (reviews: ReviewLog | ((prev: ReviewLog) => ReviewLog)) => {
     setAppData(prev => ({...prev, reviews: typeof reviews === 'function' ? reviews(prev.reviews) : reviews }));
   };
+  
+  const setTodos = (todos: { [date: string]: MemoItem[] } | ((prev: { [date: string]: MemoItem[] }) => { [date: string]: MemoItem[] })) => {
+    setAppData(prev => ({...prev, todos: typeof todos === 'function' ? todos(prev.todos) : todos }));
+  };
+
 
   const handleDateChange = (offset: number) => {
     setSelectedDate(prevDate => {
@@ -83,9 +90,11 @@ const App: React.FC = () => {
             schedule={appData.schedule}
             subjects={appData.subjects}
             distractions={appData.distractions}
+            todos={appData.todos}
             setSchedule={setSchedule as React.Dispatch<React.SetStateAction<ScheduleEntry[]>>}
             setSubjects={setSubjects as React.Dispatch<React.SetStateAction<Subject[]>>}
             setDistractions={setDistractions as React.Dispatch<React.SetStateAction<DistractionLog>>}
+            setTodos={setTodos as React.Dispatch<React.SetStateAction<{ [date: string]: MemoItem[] }>>}
           />
         );
       case View.Statistics:
@@ -110,7 +119,7 @@ const App: React.FC = () => {
       <header className="bg-brand-surface/80 backdrop-blur-lg sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-5xl">
           <div className="flex items-center justify-between h-16">
-            <h1 className="text-xl font-bold text-brand-text-primary">STUDY FOR NA</h1>
+            <h1 className="text-xl font-bold text-brand-text-primary">나를 위한 공부</h1>
             <div className="flex items-center gap-4">
                 {view === View.Scheduler && (
                     <div className="flex items-center gap-1">

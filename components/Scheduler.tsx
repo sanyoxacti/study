@@ -1,17 +1,18 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import type { ScheduleEntry, Subject, DistractionLog } from '../types.ts';
+import type { ScheduleEntry, Subject, DistractionLog, MemoItem } from '../types.ts';
 import { HOURS } from '../constants.ts';
 import { ScheduleBlockModal } from './ScheduleBlockModal.tsx';
 import { DistractionLog as DistractionLogComponent } from './DistractionLog.tsx';
-import { PencilIcon } from './Icons.tsx';
+import { PencilIcon, CheckIcon } from './Icons.tsx';
 import { SubjectManager } from './SubjectManager.tsx';
 import { Clock } from './Clock.tsx';
+import { TodoList } from './TodoList.tsx';
 
 const getHourFromAmPm = (hourStr: string) => {
-    const [time, ampm] = hourStr.split(' ');
+    const [ampm, time] = hourStr.split(' ');
     let [hour] = time.split(':').map(Number);
-    if (ampm === 'PM' && hour !== 12) hour += 12;
-    if (ampm === 'AM' && hour === 12) hour = 0;
+    if (ampm === '오후' && hour !== 12) hour += 12;
+    if (ampm === '오전' && hour === 12) hour = 0;
     return hour;
 };
 
@@ -31,18 +32,19 @@ type ScheduleGroup = {
     isExiting?: boolean
 };
 
-// FIX: Define a props interface for the Scheduler component to fix type inference issues.
 interface SchedulerProps {
   selectedDate: Date;
   schedule: ScheduleEntry[];
   subjects: Subject[];
   distractions: DistractionLog;
+  todos: { [date: string]: MemoItem[] };
   setSchedule: React.Dispatch<React.SetStateAction<ScheduleEntry[]>>;
   setSubjects: React.Dispatch<React.SetStateAction<Subject[]>>;
   setDistractions: React.Dispatch<React.SetStateAction<DistractionLog>>;
+  setTodos: React.Dispatch<React.SetStateAction<{ [date: string]: MemoItem[] }>>;
 }
 
-export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, subjects, distractions, setSchedule, setSubjects, setDistractions }) => {
+export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, subjects, distractions, todos, setSchedule, setSubjects, setDistractions, setTodos }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubjectManagerOpen, setIsSubjectManagerOpen] = useState(false);
   const [selectedEntryId, setSelectedEntryId] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
   };
   const closeModal = () => setIsModalOpen(false);
 
-  const handleSave = (entryData: Omit<ScheduleEntry, 'id'>) => {
+  const handleSave = (entryData: Pick<ScheduleEntry, 'subjectId' | 'memo'>) => {
     if (!selectedEntryId) return;
     const clickedHour = parseInt(selectedEntryId.slice(11, 13));
     const group = groupedSchedule.find(g => clickedHour >= g.start && clickedHour < g.end);
@@ -86,6 +88,28 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
     setTimeout(() => setSchedule(current => current.filter(e => !idsToDelete.includes(e.id))), 300);
   };
 
+  const handleToggleMemo = useCallback((group: ScheduleGroup, memoId: string) => {
+    const entryIdsInGroup = Array.from({ length: group.end - group.start }, (_, i) => `${yyyymmdd}-${(group.start + i).toString().padStart(2, '0')}`);
+    
+    setSchedule(prev => 
+        prev.map(entry => {
+            if (entryIdsInGroup.includes(entry.id) && entry.memo) {
+                const newMemo = entry.memo.map(memoItem => 
+                    memoItem.id === memoId 
+                        ? { ...memoItem, completed: !memoItem.completed } 
+                        : memoItem
+                );
+                return { ...entry, memo: newMemo, isNew: false };
+            }
+            return entry;
+        })
+    );
+  }, [setSchedule, yyyymmdd]);
+  
+  const handleTodosChange = (newTodos: MemoItem[]) => {
+    setTodos(prev => ({ ...prev, [yyyymmdd]: newTodos }));
+  };
+
   const groupedSchedule = useMemo(() => {
       const entriesForDate = schedule.filter((e: ScheduleEntry) => e.id.startsWith(yyyymmdd));
       const entryMap = new Map(entriesForDate.map((e: ScheduleEntry) => [parseInt(e.id.slice(11, 13)), e]));
@@ -95,7 +119,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
         const entry = entryMap.get(i);
         if(entry) {
             const lastGroup = groups[groups.length - 1];
-            if(lastGroup && lastGroup.end === i && lastGroup.entry.subjectId === entry.subjectId && lastGroup.entry.memo === entry.memo && !lastGroup.isExiting && !entry.isExiting) {
+            if(lastGroup && lastGroup.end === i && lastGroup.entry.subjectId === entry.subjectId && JSON.stringify(lastGroup.entry.memo || []) === JSON.stringify(entry.memo || []) && !lastGroup.isExiting && !entry.isExiting) {
                 lastGroup.end = i + 1;
                 lastGroup.isNew = lastGroup.isNew || entry.isNew;
             } else {
@@ -118,8 +142,9 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
   const handleDragStart = (e: React.DragEvent, group: ScheduleGroup, type: 'move' | 'resize') => {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', group.entry.id);
-    if (type === 'move') setDraggedGroup(group);
-    else {
+    if (type === 'move') {
+      setDraggedGroup(group);
+    } else {
         e.stopPropagation();
         setResizingGroup(group);
     }
@@ -151,21 +176,39 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
     } else if (resizingGroup) {
         // Resize operation
         const newEndHour = targetHour + 1;
-        if (newEndHour <= resizingGroup.start) return; // Cannot resize backwards
-        for (let i = resizingGroup.start; i < newEndHour; i++) {
-            if (occupiedHours.has(i) && i >= resizingGroup.end) {
-                return; // Collision detected on extension
-            }
+        // A block must be at least 1 hour long.
+        if (newEndHour <= resizingGroup.start) {
+            return;
         }
-        const oldDuration = resizingGroup.end - resizingGroup.start;
-        const newDuration = newEndHour - resizingGroup.start;
-        const oldIds = Array.from({ length: oldDuration }, (_, i) => `${yyyymmdd}-${(resizingGroup.start + i).toString().padStart(2, '0')}`);
-        const newEntries = Array.from({ length: newDuration }, (_, i) => ({
-            ...resizingGroup.entry,
-            id: `${yyyymmdd}-${(resizingGroup.start + i).toString().padStart(2, '0')}`,
-            isNew: false
-        }));
-        setSchedule((prev: ScheduleEntry[]) => [...prev.filter(item => !oldIds.includes(item.id)), ...newEntries]);
+
+        const currentEndHour = resizingGroup.end;
+
+        if (newEndHour > currentEndHour) { // Extending
+            // Check for collisions in the new extended part
+            for (let i = currentEndHour; i < newEndHour; i++) {
+                if (occupiedHours.has(i)) {
+                    return; // Collision detected
+                }
+            }
+            const newEntries = Array.from({ length: newEndHour - currentEndHour }, (_, i) => ({
+                ...resizingGroup.entry,
+                id: `${yyyymmdd}-${(currentEndHour + i).toString().padStart(2, '0')}`,
+                isNew: false, // Not a brand new block
+            }));
+            setSchedule(prev => [...prev, ...newEntries]);
+        } else if (newEndHour < currentEndHour) { // Shrinking
+            // Find IDs to remove
+            const idsToDelete = Array.from({ length: currentEndHour - newEndHour }, (_, i) => `${yyyymmdd}-${(newEndHour + i).toString().padStart(2, '0')}`);
+            
+            // Trigger exit animation
+            setSchedule(current => current.map(e => idsToDelete.includes(e.id) ? { ...e, isExiting: true } : e));
+            
+            // Actually remove from state after animation
+            setTimeout(() => {
+                setSchedule(current => current.filter(e => !idsToDelete.includes(e.id)));
+            }, 300);
+        }
+        // If newEndHour === currentEndHour, do nothing.
     }
   }, [draggedGroup, resizingGroup, yyyymmdd, occupiedHours, setSchedule]);
 
@@ -182,27 +225,55 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
                 const top = (group.start - 8) * 6 + 'rem';
                 const height = (group.end - group.start) * 6 + 'rem';
                 const isDragging = draggedGroup?.entry.id === group.entry.id;
+                const isResizing = resizingGroup?.entry.id === group.entry.id;
 
                 return (
                     <div 
                         key={`${group.start}-${group.entry.id}`} 
                         className={`absolute left-16 sm:left-20 right-0 p-1 transition-all duration-300 ease-in-out group ${isDragging ? 'opacity-50' : ''} ${(group.isExiting ? 'schedule-block-exit' : (group.isNew ? 'schedule-block-enter' : ''))}`}
-                        style={{ top, height }}
+                        style={{ top, height, pointerEvents: isResizing ? 'none' : 'auto' }}
                         draggable={!group.isExiting}
                         onDragStart={(e) => handleDragStart(e, group, 'move')}
                         onDragEnd={handleDragEnd}
                     >
-                       <div className={`w-full h-full rounded-lg cursor-grab p-3 flex flex-col justify-between overflow-hidden ${group.subject?.color} ${group.subject?.textColor}`} onClick={() => !group.isExiting && openModal(HOURS[group.start - 8], `${HOURS[group.start - 8]} - ${HOURS[group.end - 8] || '01:00 AM'}`)}>
-                            <div>
+                       <div className={`relative w-full h-full rounded-lg cursor-grab p-3 flex flex-row gap-4 overflow-hidden ${group.subject?.color} ${group.subject?.textColor}`} onClick={() => !group.isExiting && openModal(HOURS[group.start - 8], `${HOURS[group.start - 8]} - ${HOURS[group.end - 8] || '오전 01:00'}`)}>
+                            {/* Left Part: Subject and Time */}
+                            <div className="flex-shrink-0 w-24">
                                 <p className="font-bold text-sm break-words">{group.subject?.name}</p>
-                                <p className="text-xs opacity-80 mt-1">{`${HOURS[group.start - 8]} - ${HOURS[group.end - 8] || '01:00 AM'}`}</p>
-                                {group.entry.memo && <p className="text-xs opacity-90 whitespace-pre-wrap break-words mt-2">{group.entry.memo}</p>}
+                                <p className="text-xs opacity-80 mt-1">{`${HOURS[group.start - 8]} - ${HOURS[group.end - 8] || '오전 01:00'}`}</p>
                             </div>
+                            
+                            {/* Right Part: Memo List */}
+                            {group.entry.memo && group.entry.memo.length > 0 && (
+                                <div className="flex-grow overflow-y-auto pr-2" style={{ scrollbarWidth: 'thin' }}>
+                                    <div className="space-y-1 text-xs opacity-90">
+                                        {group.entry.memo.map(item => (
+                                            <div 
+                                                key={item.id} 
+                                                className="flex items-start gap-1.5 cursor-pointer p-1 -m-1 rounded hover:bg-black/10 transition-colors"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleToggleMemo(group, item.id);
+                                                }}
+                                            >
+                                                <div className={`w-3 h-3 mt-0.5 flex-shrink-0 rounded-sm flex items-center justify-center ${item.completed ? 'bg-black/20' : 'border border-current'}`}>
+                                                    {item.completed && <CheckIcon className="w-2 h-2 text-white"/>}
+                                                </div>
+                                                <span className={`${item.completed ? 'line-through opacity-70' : ''} break-all`}>{item.text}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Resize Handle */}
                             <div 
                                 draggable={!group.isExiting}
                                 onDragStart={(e) => handleDragStart(e, group, 'resize')}
                                 onDragEnd={handleDragEnd}
-                                className="absolute bottom-0 left-0 w-full h-4 cursor-ns-resize flex justify-center items-end opacity-0 group-hover:opacity-100 transition-opacity">
+                                className="absolute bottom-0 left-0 w-full h-4 cursor-ns-resize flex justify-center items-end opacity-0 group-hover:opacity-100 transition-opacity"
+                                style={{ pointerEvents: 'auto' }}
+                            >
                                 <div className="w-8 h-1 bg-black/30 rounded-full"></div>
                             </div>
                         </div>
@@ -212,16 +283,36 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
             {HOURS.map((hour, index) => {
               const hour24 = index + 8;
               const isOccupied = occupiedHours.has(hour24);
-              const isDropTarget = dragOverHour === hour24 && !isOccupied;
+
+              const isResizableTarget = resizingGroup && hour24 >= resizingGroup.start;
+              const isMovableTarget = draggedGroup && !isOccupied;
+
+              const isDroppable = isResizableTarget || isMovableTarget;
+              const isDropTarget = dragOverHour === hour24 && isDroppable;
 
               return (
                 <div key={hour} className="flex items-stretch h-24 border-t border-slate-200 dark:border-slate-700 first:border-t-0">
                   <div className="w-16 sm:w-20 text-right text-xs text-brand-text-secondary py-1 pr-2 sm:pr-4"><span>{hour}</span></div>
                   <div className="flex-1"
-                       onDragOver={(e) => { e.preventDefault(); if (!isOccupied) setDragOverHour(hour24); }}
+                       onDragOver={(e) => {
+                           e.preventDefault();
+                           if (isDroppable) {
+                               setDragOverHour(hour24);
+                           }
+                       }}
                        onDragLeave={() => setDragOverHour(null)}
-                       onDrop={() => { handleDrop(hour24); setDragOverHour(null); }} >
-                    <div onClick={() => !isOccupied && openModal(hour)} className={`w-full h-full rounded-md transition-colors ${isDropTarget ? 'bg-sky-200 dark:bg-sky-800' : 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800'}`}></div>
+                       onDrop={() => { 
+                           if(isDroppable) {
+                               handleDrop(hour24); 
+                           }
+                           setDragOverHour(null); 
+                       }} >
+                    <div onClick={() => !isOccupied && openModal(hour)} 
+                        className={`w-full h-full rounded-md transition-colors ${
+                            isDropTarget ? 'bg-sky-200 dark:bg-sky-800' : 
+                            (!isOccupied ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800' : '')
+                        }`}>
+                    </div>
                   </div>
                 </div>
               );
@@ -230,6 +321,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
         </div>
         <div className="md:col-span-1 flex flex-col gap-8">
             <Clock />
+            <TodoList todos={todos[yyyymmdd] || []} onTodosChange={handleTodosChange} />
             <button onClick={() => setIsSubjectManagerOpen(true)} className="w-full flex items-center justify-center gap-2 bg-brand-surface hover:bg-slate-100 dark:hover:bg-slate-700 text-brand-text-primary font-semibold py-3 px-4 rounded-lg transition-colors shadow-sm border border-slate-200 dark:border-slate-700">
                 <PencilIcon className="w-5 h-5"/>과목 관리
             </button>
@@ -237,7 +329,7 @@ export const Scheduler: React.FC<SchedulerProps> = ({ selectedDate, schedule, su
         </div>
       </div>
 
-      <ScheduleBlockModal isOpen={isModalOpen} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} subjects={subjects} entry={selectedEntryId ? schedule.find((e: ScheduleEntry) => e.id === selectedEntryId) || {subjectId: '', memo: ''} : null} entryTitle={selectedEntryTitle} />
+      <ScheduleBlockModal isOpen={isModalOpen} onClose={closeModal} onSave={handleSave} onDelete={handleDelete} subjects={subjects} entry={selectedEntryId ? schedule.find((e: ScheduleEntry) => e.id === selectedEntryId) || {subjectId: '', memo: []} : null} entryTitle={selectedEntryTitle} />
       {isSubjectManagerOpen && <SubjectManager subjects={subjects} setSubjects={setSubjects} onClose={() => setIsSubjectManagerOpen(false)} />}
     </div>
   );

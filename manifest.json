@@ -1,0 +1,22 @@
+{
+  "name": "나를 위한 공부",
+  "short_name": "StudyForNa",
+  "description": "개인 학습 계획 및 기록 관리를 위한 미니멀리스트 웹 애플리케이션입니다.",
+  "start_url": "/",
+  "display": "standalone",
+  "scope": "/",
+  "background_color": "#f8fafc",
+  "theme_color": "#ffffff",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}

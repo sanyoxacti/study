@@ -102,7 +102,6 @@ const Dashboard: React.FC<Omit<StatisticsProps, 'dailyGoal' | 'setDailyGoal' | '
     const activeMonthlyGoals = goals.filter(g => g.period === 'month' && g.startDate === startOfCurrentMonth);
   
     const scheduleBySubject = useMemo(() => {
-        const now = new Date();
         const startOfWeek = getWeekStartDate(now);
         const endOfWeek = new Date(startOfWeek);
         endOfWeek.setDate(startOfWeek.getDate() + 6);
@@ -121,7 +120,7 @@ const Dashboard: React.FC<Omit<StatisticsProps, 'dailyGoal' | 'setDailyGoal' | '
           }
           return acc;
         }, { week: {} as Record<string, number>, month: {} as Record<string, number> });
-    }, [schedule]);
+    }, [schedule, now]);
     
     const getPeriodLabel = () => {
         switch(period) {
@@ -350,12 +349,12 @@ const StreakView: React.FC<Pick<StatisticsProps, 'schedule' | 'dailyGoal' | 'set
                 )}
             </div>
             <div className="flex justify-end items-center gap-2 mt-4 text-xs text-brand-text-secondary">
-                Less
+                적게
                 <div className="w-4 h-4 rounded bg-slate-100 dark:bg-slate-800"></div>
                 <div className="w-4 h-4 rounded bg-emerald-200 dark:bg-emerald-900"></div>
                 <div className="w-4 h-4 rounded bg-emerald-400 dark:bg-emerald-700"></div>
                 <div className="w-4 h-4 rounded bg-emerald-600 dark:bg-emerald-500"></div>
-                More
+                많게
             </div>
         </div>
         {isSettingsOpen && (
